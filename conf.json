@@ -1,0 +1,8 @@
+{
+  "DataSourceName": "user:user@tcp(127.0.0.1:3306)/xray_proxy",
+  "Ip": "127.0.0.1",
+  "StartPort": 18000,
+  "RangePort": 10,
+  "delayUpdatePack": 5,
+  "pathToConfDir": "./configs/"
+}
