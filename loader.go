@@ -24,9 +24,9 @@ func loadHashes() bool {
 		return false
 	}
 	for _, file := range files {
-		_, ok := hashMap[file.Name()]
+		_, ok := hashMap.Load(file.Name())
 		if !ok {
-			hashMap[file.Name()] = false
+			hashMap.Store(file.Name(), false)
 		}
 	}
 	log.Println("loadHashes OK!")
@@ -34,10 +34,11 @@ func loadHashes() bool {
 }
 
 func updateQueue() {
-	for k, v := range hashMap {
-		if !v {
-			queue <- k
-			hashMap[k] = false
+	hashMap.Range(func(k, v any) bool {
+		if !v.(bool) {
+			queue <- k.(string)
+			hashMap.Store(k, false)
 		}
-	}
+		return true
+	})
 }

@@ -17,16 +17,16 @@ func threads() {
 	var lastTimeUpdateConfigs = time.Now()
 	var lastTimeUpdatePackages = time.Now()
 	for {
-		if time.Now().Sub(lastTimeUpdateQueue) > 5*time.Minute {
+		if time.Now().Sub(lastTimeUpdateQueue) > 30*time.Minute {
 			loadHashes()
 			updateQueue()
 			lastTimeUpdateQueue = time.Now()
 		}
-		if time.Now().Sub(lastTimeUpdatePackages) > 5*time.Minute {
+		if time.Now().Sub(lastTimeUpdatePackages) > 30*time.Minute {
 			updatePackages()
 			lastTimeUpdatePackages = time.Now()
 		}
-		if time.Now().Sub(lastTimeUpdateConfigs) > 5*time.Minute {
+		if time.Now().Sub(lastTimeUpdateConfigs) > 30*time.Minute {
 			GetConfigs()
 			lastTimeUpdateConfigs = time.Now()
 		}
@@ -35,24 +35,41 @@ func threads() {
 }
 
 func runner() {
+	defer func() {
+		PortPidMap.Range(func(key, value any) bool {
+			process, _ := os.FindProcess(value.(int))
+			_ = process.Signal(os.Interrupt)
+			return true
+		})
+	}()
 	log.Println("Run Runner")
 	for {
 		var t = uint16(threadsNow.Load())
 		if t < AppConfig.RangePort {
 			for i := uint16(0); i < AppConfig.RangePort-t; i++ {
 				threadsNow.Add(1)
-				go runXray()
+				runXray()
 			}
 		}
 
-		if t > AppConfig.RangePort {
-			for i := uint16(0); i < t-AppConfig.RangePort; i++ {
-				go func() {
-					quit <- struct{}{}
-				}()
+		PortPidMap.Range(func(key, value any) bool {
+			process, err := os.FindProcess(value.(int))
+			if err != nil {
+				return false
 			}
-		}
-		time.Sleep(30 * time.Second)
+			err = process.Signal(os.Signal(nil))
+			if err != nil {
+				log.Println(value.(int), " Умер")
+				pid, _ := PortConfMap.Load(key.(uint16))
+				hashMap.Store(pid.(string), false)
+				PortPidMap.Delete(key.(uint16))
+				PortConfMap.Delete(key.(uint16))
+				freePorts.Insert(key.(uint16))
+				threadsNow.Add(-1)
+			}
+			return true
+		})
+		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -76,41 +93,27 @@ func GetConfigs() {
 }
 
 func runXray() {
-	select {
-	case <-quit:
+	var hash = <-queue
+	path := AppConfig.PathToConfDir + hash
+	var port, err = freePorts.ExtractMin()
+	if err != nil {
 		return
-	default:
-		var hash = <-queue
-		path := AppConfig.PathToConfDir + hash
-		var port, err = freePorts.ExtractMin()
-		if err != nil {
-			return
-		}
-		configData, err := os.ReadFile(path)
-		PortConfMap.Store(port, hash)
-		var cmd = exec.Command("xray")
-		stdin, err := cmd.StdinPipe()
-
-		err = cmd.Start()
-		if err != nil {
-			fmt.Printf("Ошибка при запуске команды: %v\n", err)
-			return
-		}
-		var tmp = string(configData)
-		tmp = strings.Replace(tmp, "\"port\":0,\"protocol\"", "\"port\":"+strconv.Itoa(int(port))+",\"protocol\"", 1)
-		io.WriteString(stdin, tmp)
-		stdin.Close()
-		_, err = cmd.CombinedOutput()
-		pid := cmd.Process.Pid
-		log.Println(pid)
-		PortPidMap.Store(port, pid)
-		err = cmd.Wait()
-		defer func() {
-			hashMap[hash] = false
-			PortPidMap.Delete(port)
-			PortConfMap.Delete(port)
-			freePorts.Insert(port)
-			threadsNow.Add(-1)
-		}()
 	}
+	configData, err := os.ReadFile(path)
+	PortConfMap.Store(port, hash)
+	var cmd = exec.Command("xray")
+	stdin, err := cmd.StdinPipe()
+	err = cmd.Start()
+	if err != nil {
+		fmt.Printf("Ошибка при запуске команды: %v\n", err)
+		return
+	}
+	var tmp = string(configData)
+	tmp = strings.Replace(tmp, "\"port\":0,\"protocol\"", "\"port\":"+strconv.Itoa(int(port))+",\"protocol\"", 1)
+	io.WriteString(stdin, tmp)
+	stdin.Close()
+	_, err = cmd.CombinedOutput()
+	pid := cmd.Process.Pid
+	log.Println(pid)
+	PortPidMap.Store(port, pid)
 }
