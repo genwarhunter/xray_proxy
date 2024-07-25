@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ func threads() {
 	var lastTimeUpdateQueue = time.Now()
 	var lastTimeUpdateConfigs = time.Now()
 	var lastTimeUpdatePackages = time.Now()
+	var lastTimeKiller = time.Now()
 	for {
 		if time.Now().Sub(lastTimeUpdateQueue) > 30*time.Minute {
 			loadHashes()
@@ -29,6 +31,10 @@ func threads() {
 		if time.Now().Sub(lastTimeUpdateConfigs) > 30*time.Minute {
 			GetConfigs()
 			lastTimeUpdateConfigs = time.Now()
+		}
+		if time.Now().Sub(lastTimeKiller) > 5*time.Minute {
+			killer()
+			lastTimeKiller = time.Now()
 		}
 		time.Sleep(5 * time.Second)
 	}
@@ -60,12 +66,7 @@ func runner() {
 			err = process.Signal(os.Signal(nil))
 			if err != nil {
 				log.Println(value.(int), " Умер")
-				pid, _ := PortConfMap.Load(key.(uint16))
-				hashMap.Store(pid.(string), false)
-				PortPidMap.Delete(key.(uint16))
-				PortConfMap.Delete(key.(uint16))
-				freePorts.Insert(key.(uint16))
-				threadsNow.Add(-1)
+				deletePortInfo(key.(uint16))
 			}
 			return true
 		})
@@ -116,4 +117,18 @@ func runXray() {
 	pid := cmd.Process.Pid
 	log.Println(pid)
 	PortPidMap.Store(port, pid)
+}
+
+func killer() {
+	var response = httpGET(AppConfig.CheckerUrl, 1)
+	var re = regexp.MustCompile(`(?si)port":(\d+)`)
+	for _, match := range re.FindAllString(str, -1) {
+
+	}
+
+	Pid2Kill.Range(func(key, value any) bool {
+		process, _ := os.FindProcess(value.(int))
+		_ = process.Signal(os.Interrupt)
+		return true
+	})
 }

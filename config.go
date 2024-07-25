@@ -16,6 +16,7 @@ type Conf struct {
 	RangePort       uint16        // Количество занимаемых портов + максимальное ограничение на количество потоков
 	DelayUpdatePack time.Duration // Задержка обновления Списков (Минуты)
 	PathToConfDir   string
+	CheckerUrl      string
 }
 
 func GetConfig() {

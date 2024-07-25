@@ -19,7 +19,6 @@ var hashMap sync.Map
 var freePorts *MinHeap
 var threadsNow atomic.Int32
 
-var quit chan struct{}
 var queue chan string
 
 //var servConnection map[server]string
