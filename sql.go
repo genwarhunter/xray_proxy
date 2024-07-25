@@ -14,6 +14,7 @@ func CreateConnectMysql() {
 	if err != nil {
 		log.Fatalln("sql.Open", err)
 	}
+	log.Println("Соединение с бд установлено")
 	return
 }
 
@@ -35,5 +36,6 @@ func selectFromPackage() ([]infoPackageRow, bool) {
 		ans = append(ans, q)
 	}
 	_ = results.Close()
+	log.Println(ans)
 	return ans, true
 }

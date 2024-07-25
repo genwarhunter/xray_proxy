@@ -24,6 +24,7 @@ func threads() {
 		}
 		if time.Now().Sub(lastTimeUpdatePackages) > 5*time.Minute {
 			updatePackages()
+			lastTimeUpdatePackages = time.Now()
 		}
 		if time.Now().Sub(lastTimeUpdateConfigs) > 5*time.Minute {
 			GetConfigs()
@@ -34,6 +35,7 @@ func threads() {
 }
 
 func runner() {
+	log.Println("Run Runner")
 	for {
 		var t = uint16(threadsNow.Load())
 		if t < AppConfig.RangePort {
@@ -57,6 +59,9 @@ func runner() {
 func GetConfigs() {
 	Package.Range(func(key, value any) bool {
 		if value.(infoPackageRow).Use {
+			if value.(infoPackageRow).Id == 2 {
+				GenerateConfig("vmess://eyJhZGQiOiJsaW5kZTA2LmluZGlhdmlkZW8uc2JzIiwiYWlkIjoiMCIsImhvc3QiOiJsaW5kZTA2LmluZGlhdmlkZW8uc2JzIiwiaWQiOiJlZGJiMTA1OS0xNjMzLTQyNzEtYjY2ZS1lZDRmYmE0N2ExYmYiLCJuZXQiOiJ3cyIsInBhdGgiOiIvbGlua3dzIiwicG9ydCI6IjQ0MyIsInBzIjoi8J+HuvCfh7hVUyB8IPCfn6IgfCB2bWVzcyB8IEBEZWFtTmV0X1Byb3h5IHwgMCIsInNjeSI6ImF1dG8iLCJzbmkiOiIiLCJ0bHMiOiJ0bHMiLCJ0eXBlIjoiIiwidiI6IjIifQ==")
+			}
 			response := httpGET(value.(infoPackageRow).Url, 1)
 			for _, link := range strings.Split(response, "\n") {
 				hash := GenerateConfig(link)
@@ -65,6 +70,7 @@ func GetConfigs() {
 				}
 			}
 		}
+		log.Println("Config OK!")
 		return true
 	})
 }
@@ -84,16 +90,17 @@ func runXray() {
 		PortConfMap.Store(port, hash)
 		var cmd = exec.Command("xray")
 		stdin, err := cmd.StdinPipe()
-		var tmp = string(configData)
-		tmp = strings.Replace(tmp, "\"port\":0,\"protocol\"", "\"port\":"+strconv.Itoa(int(port))+",\"protocol\"", 1)
-		io.WriteString(stdin, tmp)
-		stdin.Close()
-		_, err = cmd.CombinedOutput()
+
 		err = cmd.Start()
 		if err != nil {
 			fmt.Printf("Ошибка при запуске команды: %v\n", err)
 			return
 		}
+		var tmp = string(configData)
+		tmp = strings.Replace(tmp, "\"port\":0,\"protocol\"", "\"port\":"+strconv.Itoa(int(port))+",\"protocol\"", 1)
+		io.WriteString(stdin, tmp)
+		stdin.Close()
+		_, err = cmd.CombinedOutput()
 		pid := cmd.Process.Pid
 		log.Println(pid)
 		PortPidMap.Store(port, pid)

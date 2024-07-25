@@ -29,6 +29,7 @@ func loadHashes() bool {
 			hashMap[file.Name()] = false
 		}
 	}
+	log.Println("loadHashes OK!")
 	return true
 }
 

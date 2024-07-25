@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -42,6 +43,7 @@ func init() {
 }
 
 func main() {
+	log.Println("Run threads")
 	threads()
 	//var response = httpGET("https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/All_Configs_Sub.txt", 1)
 	//for _, link := range strings.Split("response, "\n") {
