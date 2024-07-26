@@ -9,14 +9,16 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
+	"strings"
+	"sync"
 )
 
-func GenerateConfig(link string) string {
+func GenerateConfig(link string, wg *sync.WaitGroup) {
+	defer wg.Done()
 	parseUrl, err := url.Parse(link)
 	if err != nil {
-		//log.Println(err)
-
-		return ""
+		return
 	}
 	var rc rawConfig
 
@@ -32,7 +34,7 @@ func GenerateConfig(link string) string {
 	case "ssr":
 		parseSSR(parseUrl, &rc)
 	default:
-		return ""
+		return
 	}
 
 	var port, _ = freePorts.ExtractMin()
@@ -40,11 +42,38 @@ func GenerateConfig(link string) string {
 	hash := md5.Sum([]byte(jsonConf))
 	hashString := hex.EncodeToString(hash[:])
 	createConfigFile(hashString, jsonConf)
-	return hashString
+	return
 }
 
 func parseVless(link *url.URL, rc *rawConfig) {
-	// Implementation here
+	rc.id = link.User.Username()
+	var query = link.Query()
+	if path, ok := query["path"]; ok {
+		rc.path = path[0]
+	}
+	if enc, ok := query["encryption"]; ok {
+		rc.enc = enc[0]
+	} else {
+		rc.enc = "none"
+	}
+	if security, ok := query["security"]; ok {
+		rc.security = security[0]
+	}
+	if tls, ok := query["security"]; ok {
+		rc.tls = tls[0]
+	}
+	rc.ip = strings.Split(link.Host, ":")[0]
+	if host, ok := query["host"]; ok {
+		rc.host = host[0]
+	}
+	if Type, ok := query["type"]; ok {
+		rc.Type = Type[0]
+		rc.net = Type[0]
+	}
+	port, _ := strconv.Atoi(strings.Split(link.Host, ":")[1])
+	rc.port = uint16(port)
+	rc.protocol = link.Scheme
+
 }
 
 func parseVmess(link *url.URL, rc *rawConfig) {
@@ -139,7 +168,7 @@ func buildOutbounds(rc *rawConfig) *[]Outbound {
 						Address: rc.ip,
 						Port:    getPort(rc.port),
 						Users: []USER{
-							{Id: rc.id, AlterId: 0, Security: "auto"},
+							{Id: rc.id, AlterId: 0, Security: "auto", Encryption: rc.enc},
 						},
 					},
 				},

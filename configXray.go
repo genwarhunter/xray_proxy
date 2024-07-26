@@ -120,9 +120,10 @@ type vnext struct {
 }
 
 type USER struct {
-	AlterId  int    `json:"alterId"`
-	Id       string `json:"id"`
-	Security string `json:"security"`
+	AlterId    int    `json:"alterId"`
+	Id         string `json:"id"`
+	Security   string `json:"security"`
+	Encryption string `json:"encryption"`
 }
 
 type StreamSettingsObject struct {
@@ -284,6 +285,7 @@ type rawConfig struct {
 	security string
 	sni      string
 	tls      string
+	enc      string
 }
 
 type SECURYTY struct {
