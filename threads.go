@@ -6,9 +6,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -32,7 +32,7 @@ func threads() {
 			GetConfigs()
 			lastTimeUpdateConfigs = time.Now()
 		}
-		if time.Now().Sub(lastTimeKiller) > 5*time.Minute {
+		if time.Now().Sub(lastTimeKiller) > 30*time.Second {
 			killer()
 			lastTimeKiller = time.Now()
 		}
@@ -63,7 +63,7 @@ func runner() {
 			if err != nil {
 				return false
 			}
-			err = process.Signal(os.Signal(nil))
+			err = process.Signal(syscall.Signal(0))
 			if err != nil {
 				log.Println(value.(int), " Умер")
 				deletePortInfo(key.(uint16))
@@ -111,24 +111,30 @@ func runXray() {
 	}
 	var tmp = string(configData)
 	tmp = strings.Replace(tmp, "\"port\":0,\"protocol\"", "\"port\":"+strconv.Itoa(int(port))+",\"protocol\"", 1)
-	io.WriteString(stdin, tmp)
-	stdin.Close()
+	_, _ = io.WriteString(stdin, tmp)
+	_ = stdin.Close()
 	_, err = cmd.CombinedOutput()
 	pid := cmd.Process.Pid
-	log.Println(pid)
+	log.Println("PID: ", pid, "	PORT: ", port, "	STATUS: Started")
 	PortPidMap.Store(port, pid)
 }
 
 func killer() {
 	var response = httpGET(AppConfig.CheckerUrl, 1)
-	var re = regexp.MustCompile(`(?si)port":(\d+)`)
-	for _, match := range re.FindAllString(str, -1) {
-
+	for i := AppConfig.StartPort; i < AppConfig.StartPort+AppConfig.RangePort; i++ {
+		ok := strings.Contains(response, AppConfig.Ip+":"+strconv.Itoa(int(i)))
+		pid, ok2 := PortPidMap.Load(i)
+		if !ok2 {
+			continue
+		}
+		if !ok {
+			process, _ := os.FindProcess(pid.(int))
+			_ = process.Signal(os.Interrupt)
+			_, _ = process.Wait()
+			log.Println("PID: ", pid, "	PORT: ", i, "	STATUS: Killed")
+			deletePortInfo(i)
+		} else {
+			log.Println("PID: ", pid, "	PORT: ", i, "	STATUS: Live")
+		}
 	}
-
-	Pid2Kill.Range(func(key, value any) bool {
-		process, _ := os.FindProcess(value.(int))
-		_ = process.Signal(os.Interrupt)
-		return true
-	})
 }

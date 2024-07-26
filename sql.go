@@ -36,6 +36,6 @@ func selectFromPackage() ([]infoPackageRow, bool) {
 		ans = append(ans, q)
 	}
 	_ = results.Close()
-	log.Println(ans)
+
 	return ans, true
 }
