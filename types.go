@@ -3,26 +3,7 @@ package main
 import (
 	"container/heap"
 	"fmt"
-	"net"
 	"sync"
-)
-
-type server struct {
-	ip       net.IP
-	port     uint16
-	protocol byte
-}
-
-func (k server) Equal(other server) bool {
-	return k.ip.Equal(other.ip) && k.port == other.port && k.protocol == other.protocol
-}
-
-const (
-	_vless = iota
-	_vmess
-	_trojan
-	_ss
-	_ssr
 )
 
 type Port struct {

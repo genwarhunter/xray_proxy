@@ -4,5 +4,6 @@
   "StartPort": 18000,
   "RangePort": 10,
   "delayUpdatePack": 5,
-  "pathToConfDir": "./configs/"
+  "pathToConfDir": "./configs/",
+  "checkerUrl": ""
 }

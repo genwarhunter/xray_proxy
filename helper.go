@@ -20,6 +20,15 @@ func removeOtherKeys(keysToKeep map[interface{}]bool, m *sync.Map) {
 	}
 }
 
+func deletePortInfo(port uint16) {
+	pid, _ := PortConfMap.Load(port)
+	hashMap.Store(pid.(string), false)
+	PortPidMap.Delete(port)
+	PortConfMap.Delete(port)
+	freePorts.Insert(port)
+	threadsNow.Add(-1)
+}
+
 func httpGET(url string, maxAttempts int) string {
 	var attempt = 0
 	var resp *http.Response

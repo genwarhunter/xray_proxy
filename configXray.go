@@ -44,7 +44,7 @@ type Server struct {
 	Method        string   `json:"method,omitempty"`
 	Domains       []string `json:"domains,omitempty"`
 	Password      string   `json:"password,omitempty"`
-	Port          int      `json:"port,omitempty"`
+	Port          uint16   `json:"port,omitempty"`
 	Uot           bool     `json:"uot,omitempty"`
 	QueryStrategy string   `json:"queryStrategy,omitempty"`
 }
@@ -106,11 +106,12 @@ type PROXYSETTINGS struct {
 }
 
 type OUTBOUNDSETTING struct {
-	Vnext     []vnext `json:"vnext,omitempty"`
-	Address   string  `json:"address,omitempty"`
-	Network   string  `json:"network,omitempty"`
-	Port      uint16  `json:"port,omitempty"`
-	UserLevel int     `json:"userLevel,omitempty"`
+	Vnext     []vnext  `json:"vnext,omitempty"`
+	Address   string   `json:"address,omitempty"`
+	Network   string   `json:"network,omitempty"`
+	Port      uint16   `json:"port,omitempty"`
+	UserLevel int      `json:"userLevel,omitempty"`
+	Servers   []Server `json:"servers,omitempty"`
 }
 
 type vnext struct {
@@ -120,9 +121,11 @@ type vnext struct {
 }
 
 type USER struct {
-	AlterId  int    `json:"alterId"`
-	Id       string `json:"id"`
-	Security string `json:"security"`
+	AlterId    int    `json:"alterId"`
+	Id         string `json:"id"`
+	Security   string `json:"security"`
+	Encryption string `json:"encryption"`
+	Flow       string `json:"flow,omitempty"`
 }
 
 type StreamSettingsObject struct {
@@ -139,6 +142,15 @@ type StreamSettingsObject struct {
 	HttpupgradeSettings *httpupgradeSettings `json:"httpupgradeSettings,omitempty"`
 	SplithttpSettings   *splithttpSettings   `json:"splithttpSettings,omitempty"`
 	Sockopt             *SOCKOPT             `json:"sockopt,omitempty"`
+	RealitySettings     *REALITYSETTINGS     `json:"realitySettings,omitempty"`
+}
+
+type REALITYSETTINGS struct {
+	Fingerprint string `json:"fingerprint,omitempty"`
+	PublicKey   string `json:"publicKey,omitempty"`
+	ServerName  string `json:"serverName,omitempty"`
+	ShortId     string `json:"shortId,omitempty"`
+	SpiderX     string `json:"spiderX,omitempty"`
 }
 
 type SOCKOPT struct {
@@ -228,12 +240,12 @@ type dsSettings struct {
 }
 
 type grpcSettings struct {
-	ServiceName         string `json:"serviceName"`
-	MultiMode           bool   `json:"multiMode"`
-	IdleTimeout         int    `json:"idle_timeout"`
-	HealthCheckTimeout  int    `json:"health_check_timeout"`
-	PermitWithoutStream bool   `json:"permit_without_stream"`
-	InitialWindowsSize  int    `json:"initial_windows_size"`
+	ServiceName         string `json:"serviceName,omitempty"`
+	MultiMode           bool   `json:"multiMode,omitempty"`
+	IdleTimeout         int    `json:"idle_timeout,omitempty"`
+	HealthCheckTimeout  int    `json:"health_check_timeout,omitempty"`
+	PermitWithoutStream bool   `json:"permit_without_stream,omitempty"`
+	InitialWindowsSize  int    `json:"initial_windows_size,omitempty"`
 }
 
 type httpupgradeSettings struct {
@@ -272,18 +284,27 @@ type VmessConfig struct {
 }
 
 type rawConfig struct {
-	protocol string
-	ip       string
-	host     string
-	port     uint16
-	path     string
-	net      string
-	id       string
-	Type     string
-	fp       string
-	security string
-	sni      string
-	tls      string
+	protocol    string
+	ip          string
+	host        string
+	port        uint16
+	path        string
+	net         string
+	id          string
+	Type        string
+	fp          string
+	security    string
+	sni         string
+	tls         string
+	enc         string
+	serviceName string
+	fingerprint string
+	publicKey   string
+	serverName  string
+	shortId     string
+	spiderX     string
+	flow        string
+	alpn        string
 }
 
 type SECURYTY struct {
