@@ -17,6 +17,7 @@ type Conf struct {
 	DelayUpdatePack time.Duration // Задержка обновления Списков (Минуты)
 	PathToConfDir   string
 	CheckerUrl      string
+	DelayKill       time.Duration
 }
 
 func GetConfig() {

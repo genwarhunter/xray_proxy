@@ -44,7 +44,7 @@ type Server struct {
 	Method        string   `json:"method,omitempty"`
 	Domains       []string `json:"domains,omitempty"`
 	Password      string   `json:"password,omitempty"`
-	Port          int      `json:"port,omitempty"`
+	Port          uint16   `json:"port,omitempty"`
 	Uot           bool     `json:"uot,omitempty"`
 	QueryStrategy string   `json:"queryStrategy,omitempty"`
 }
@@ -106,11 +106,12 @@ type PROXYSETTINGS struct {
 }
 
 type OUTBOUNDSETTING struct {
-	Vnext     []vnext `json:"vnext,omitempty"`
-	Address   string  `json:"address,omitempty"`
-	Network   string  `json:"network,omitempty"`
-	Port      uint16  `json:"port,omitempty"`
-	UserLevel int     `json:"userLevel,omitempty"`
+	Vnext     []vnext  `json:"vnext,omitempty"`
+	Address   string   `json:"address,omitempty"`
+	Network   string   `json:"network,omitempty"`
+	Port      uint16   `json:"port,omitempty"`
+	UserLevel int      `json:"userLevel,omitempty"`
+	Servers   []Server `json:"servers,omitempty"`
 }
 
 type vnext struct {
@@ -124,6 +125,7 @@ type USER struct {
 	Id         string `json:"id"`
 	Security   string `json:"security"`
 	Encryption string `json:"encryption"`
+	Flow       string `json:"flow,omitempty"`
 }
 
 type StreamSettingsObject struct {
@@ -301,6 +303,8 @@ type rawConfig struct {
 	serverName  string
 	shortId     string
 	spiderX     string
+	flow        string
+	alpn        string
 }
 
 type SECURYTY struct {

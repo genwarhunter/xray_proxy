@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -32,7 +33,7 @@ func threads() {
 			GetConfigs()
 			lastTimeUpdateConfigs = time.Now()
 		}
-		if time.Now().Sub(lastTimeKiller) > 30*time.Second {
+		if time.Now().Sub(lastTimeKiller) > AppConfig.DelayKill*time.Minute {
 			killer()
 			lastTimeKiller = time.Now()
 		}
@@ -75,22 +76,24 @@ func runner() {
 }
 
 func GetConfigs() {
+	var wg sync.WaitGroup
 	Package.Range(func(key, value any) bool {
 		if value.(infoPackageRow).Use {
 			if value.(infoPackageRow).Id == 2 {
-				GenerateConfig("vmess://eyJhZGQiOiJsaW5kZTA2LmluZGlhdmlkZW8uc2JzIiwiYWlkIjoiMCIsImhvc3QiOiJsaW5kZTA2LmluZGlhdmlkZW8uc2JzIiwiaWQiOiJlZGJiMTA1OS0xNjMzLTQyNzEtYjY2ZS1lZDRmYmE0N2ExYmYiLCJuZXQiOiJ3cyIsInBhdGgiOiIvbGlua3dzIiwicG9ydCI6IjQ0MyIsInBzIjoi8J+HuvCfh7hVUyB8IPCfn6IgfCB2bWVzcyB8IEBEZWFtTmV0X1Byb3h5IHwgMCIsInNjeSI6ImF1dG8iLCJzbmkiOiIiLCJ0bHMiOiJ0bHMiLCJ0eXBlIjoiIiwidiI6IjIifQ==")
+				wg.Add(1)
+				go GenerateConfig("trojan://telegram-id-privatevpns@63.34.118.223:22222?security=tls&alpn=http/1.1&headerType=none&type=tcp&sni=trojan.burgerip.co.uk", &wg)
 			}
 			response := httpGET(value.(infoPackageRow).Url, 1)
 			for _, link := range strings.Split(response, "\n") {
-				hash := GenerateConfig(link)
-				if hash == "" {
-					continue
-				}
+				wg.Add(1)
+				go GenerateConfig(link, &wg)
+
 			}
 		}
 		log.Println("Config OK!")
 		return true
 	})
+	wg.Wait()
 }
 
 func runXray() {

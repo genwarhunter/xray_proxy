@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -38,8 +37,7 @@ func GenerateConfig(link string, wg *sync.WaitGroup) {
 		return
 	}
 
-	var port, _ = freePorts.ExtractMin()
-	jsonConf := buildConfig(port, &rc)
+	jsonConf := buildConfig(&rc)
 	hash := md5.Sum([]byte(jsonConf))
 	hashString := hex.EncodeToString(hash[:])
 	HashProtocolMap.Store(hashString, rc.protocol)
@@ -93,6 +91,10 @@ func parseVless(link *url.URL, rc *rawConfig) {
 	if fingerprint, ok := query["fp"]; ok {
 		rc.fingerprint = fingerprint[0]
 	}
+	if flow, ok := query["flow"]; ok {
+		rc.flow = flow[0]
+	}
+
 }
 
 func parseVmess(link *url.URL, rc *rawConfig) {
@@ -112,12 +114,62 @@ func parseVmess(link *url.URL, rc *rawConfig) {
 	rc.Type = c.Type
 	rc.fp = c.Fp
 	rc.security = c.Scy
-	rc.sni = c.Sni
+	rc.serverName = c.Sni
 	rc.tls = c.Tls
 }
 
 func parseTrojan(link *url.URL, rc *rawConfig) {
-	// Implementation here
+	rc.id = link.User.Username()
+	var query = link.Query()
+	if path, ok := query["path"]; ok {
+		rc.path = path[0]
+	}
+	if enc, ok := query["encryption"]; ok {
+		rc.enc = enc[0]
+	} else {
+		rc.enc = "none"
+	}
+	if security, ok := query["security"]; ok {
+		rc.security = security[0]
+	}
+	if tls, ok := query["security"]; ok {
+		rc.tls = tls[0]
+	}
+	rc.ip = strings.Split(link.Host, ":")[0]
+	if host, ok := query["host"]; ok {
+		rc.host = host[0]
+	}
+	if Type, ok := query["type"]; ok {
+		rc.Type = Type[0]
+		rc.net = Type[0]
+	}
+	port, _ := strconv.Atoi(strings.Split(link.Host, ":")[1])
+	rc.port = uint16(port)
+	rc.protocol = link.Scheme
+	if serviceName, ok := query["serviceName"]; ok {
+		rc.serviceName = serviceName[0]
+	}
+	if spiderX, ok := query["spx"]; ok {
+		rc.spiderX = spiderX[0]
+	}
+	if shortId, ok := query["sid"]; ok {
+		rc.shortId = shortId[0]
+	}
+	if publicKey, ok := query["pbk"]; ok {
+		rc.publicKey = publicKey[0]
+	}
+	if serverName, ok := query["sni"]; ok {
+		rc.serverName = serverName[0]
+	}
+	if fingerprint, ok := query["fp"]; ok {
+		rc.fingerprint = fingerprint[0]
+	}
+	if flow, ok := query["flow"]; ok {
+		rc.flow = flow[0]
+	}
+	if alpn, ok := query["alpn"]; ok {
+		rc.alpn = alpn[0]
+	}
 }
 
 func parseSS(link *url.URL, rc *rawConfig) {
@@ -128,7 +180,7 @@ func parseSSR(link *url.URL, rc *rawConfig) {
 	// Implementation here
 }
 
-func buildConfig(port uint16, rc *rawConfig) string {
+func buildConfig(rc *rawConfig) string {
 	conf := Config{
 		Log: &LOG{Loglevel: "warning"},
 		Dns: &DNS{
@@ -177,19 +229,31 @@ func buildConfig(port uint16, rc *rawConfig) string {
 }
 
 func buildOutbounds(rc *rawConfig) *[]Outbound {
+	var VNex vnext
+	var Serv Server
+	if rc.protocol != "trojan" {
+		VNex = vnext{
+			Address: rc.ip,
+			Port:    getPort(rc.port),
+			Users: []USER{
+				{Id: rc.id, AlterId: 0, Security: "auto", Encryption: rc.enc, Flow: rc.flow},
+			},
+		}
+	} else {
+		Serv.Address = rc.ip
+		Serv.Port = rc.port
+		Serv.Password = rc.id
+	}
 	outbounds := []Outbound{
 		{
 			DomainStrategy: "AsIs",
 			Protocol:       rc.protocol,
 			Settings: &OUTBOUNDSETTING{
 				Vnext: []vnext{
-					{
-						Address: rc.ip,
-						Port:    getPort(rc.port),
-						Users: []USER{
-							{Id: rc.id, AlterId: 0, Security: "auto", Encryption: rc.enc},
-						},
-					},
+					VNex,
+				},
+				Servers: []Server{
+					Serv,
 				},
 			},
 			StreamSettings: buildStreamSettings(rc),
@@ -214,13 +278,12 @@ func buildStreamSettings(rc *rawConfig) *StreamSettingsObject {
 	case "ws":
 		ss.WsSettings = &wsSettings{
 			Path: rc.path,
-			Host: rc.sni,
+			Host: rc.serverName,
 			Headers: map[string]string{
 				"path": rc.path,
 				"host": rc.host,
 			},
 		}
-		getSecurity(rc, ss)
 	case "grpc":
 		ss.GrpcSettings = &grpcSettings{}
 		ss.RealitySettings = &REALITYSETTINGS{
@@ -230,11 +293,34 @@ func buildStreamSettings(rc *rawConfig) *StreamSettingsObject {
 			ShortId:     rc.shortId,
 			SpiderX:     rc.spiderX,
 		}
-	case "":
+	case "tcp":
+		ss.RealitySettings = &REALITYSETTINGS{
+			Fingerprint: rc.fingerprint,
+			PublicKey:   rc.publicKey,
+			ServerName:  rc.serverName,
+			ShortId:     rc.shortId,
+			SpiderX:     rc.spiderX,
+		}
+	case "http":
+		ss.RealitySettings = &REALITYSETTINGS{
+			Fingerprint: rc.fingerprint,
+			PublicKey:   rc.publicKey,
+			ServerName:  rc.serverName,
+			ShortId:     rc.shortId,
+			SpiderX:     rc.spiderX,
+		}
+	case "httpupgrade":
+		return ss
 	default:
-		log.Println(rc.net)
-		return nil
+		ss.RealitySettings = &REALITYSETTINGS{
+			Fingerprint: rc.fingerprint,
+			PublicKey:   rc.publicKey,
+			ServerName:  rc.serverName,
+			ShortId:     rc.shortId,
+			SpiderX:     rc.spiderX,
+		}
 	}
+	getSecurity(rc, ss)
 	return ss
 }
 
@@ -255,7 +341,10 @@ func getSecurity(rc *rawConfig, s *StreamSettingsObject) {
 	}
 	s.Security = rc.tls
 	if !isZeroValue(s) {
-		s.TlsSettings = &tlsSettings{ServerName: rc.sni}
+		s.TlsSettings = &tlsSettings{
+			ServerName: rc.serverName,
+			Alpn:       []string{rc.alpn},
+		}
 	}
 }
 
