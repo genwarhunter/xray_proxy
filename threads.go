@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 )
@@ -33,7 +32,7 @@ func threads() {
 			GetConfigs()
 			lastTimeUpdateConfigs = time.Now()
 		}
-		if time.Now().Sub(lastTimeKiller) > 5*time.Minute {
+		if time.Now().Sub(lastTimeKiller) > 30*time.Second {
 			killer()
 			lastTimeKiller = time.Now()
 		}
@@ -76,23 +75,22 @@ func runner() {
 }
 
 func GetConfigs() {
-	var wg = sync.WaitGroup{}
 	Package.Range(func(key, value any) bool {
 		if value.(infoPackageRow).Use {
 			if value.(infoPackageRow).Id == 2 {
-				wg.Add(1)
-				go GenerateConfig("vless://4a60a8e0-b51d-41ae-8500-1b0b6724c6e6@185.247.184.147:2060?mode=gun&security=reality&encryption=none&alpn=h2,http/1.1&authority=&pbk=1k5jM49Bx5DEAfS5Vpqz93t2XOXk-kwXl0V5Q9jn_WY&fp=chrome&spx=/@ELiV2RAY--@ELiV2RAY--@ELiV2RAY--@ELiV2RAY--@ELiV2RAY--@ELiV2RAY--@ELiV2RAY--@ELiV2RAY&type=grpc&serviceName=&sni=dash.cloudflare.com&sid=f77e5398", &wg)
+				GenerateConfig("vmess://eyJhZGQiOiJsaW5kZTA2LmluZGlhdmlkZW8uc2JzIiwiYWlkIjoiMCIsImhvc3QiOiJsaW5kZTA2LmluZGlhdmlkZW8uc2JzIiwiaWQiOiJlZGJiMTA1OS0xNjMzLTQyNzEtYjY2ZS1lZDRmYmE0N2ExYmYiLCJuZXQiOiJ3cyIsInBhdGgiOiIvbGlua3dzIiwicG9ydCI6IjQ0MyIsInBzIjoi8J+HuvCfh7hVUyB8IPCfn6IgfCB2bWVzcyB8IEBEZWFtTmV0X1Byb3h5IHwgMCIsInNjeSI6ImF1dG8iLCJzbmkiOiIiLCJ0bHMiOiJ0bHMiLCJ0eXBlIjoiIiwidiI6IjIifQ==")
 			}
 			response := httpGET(value.(infoPackageRow).Url, 1)
 			for _, link := range strings.Split(response, "\n") {
-				wg.Add(1)
-				go GenerateConfig(link, &wg)
+				hash := GenerateConfig(link)
+				if hash == "" {
+					continue
+				}
 			}
 		}
 		log.Println("Config OK!")
 		return true
 	})
-	wg.Wait()
 }
 
 func runXray() {
@@ -117,8 +115,7 @@ func runXray() {
 	_ = stdin.Close()
 	_, err = cmd.CombinedOutput()
 	pid := cmd.Process.Pid
-	protocol, _ := HashProtocolMap.Load(hash)
-	log.Println("Protocol: ", protocol, "	PID: ", pid, "	PORT: ", port, "	STATUS: Started")
+	log.Println("PID: ", pid, "	PORT: ", port, "	STATUS: Started")
 	PortPidMap.Store(port, pid)
 }
 
@@ -130,17 +127,14 @@ func killer() {
 		if !ok2 {
 			continue
 		}
-		hash, _ := PortConfMap.Load(i)
-		protocol, _ := HashProtocolMap.Load(hash)
 		if !ok {
 			process, _ := os.FindProcess(pid.(int))
 			_ = process.Signal(os.Interrupt)
 			_, _ = process.Wait()
-
-			log.Println("Protocol: ", protocol, "	PID: ", pid, "	PORT: ", i, "	STATUS: Killed")
+			log.Println("PID: ", pid, "	PORT: ", i, "	STATUS: Killed")
 			deletePortInfo(i)
 		} else {
-			log.Println("Protocol: ", protocol, "	PID: ", pid, "	PORT: ", i, "	STATUS: Live")
+			log.Println("PID: ", pid, "	PORT: ", i, "	STATUS: Live")
 		}
 	}
 }
