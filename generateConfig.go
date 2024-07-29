@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -41,6 +42,7 @@ func GenerateConfig(link string, wg *sync.WaitGroup) {
 	jsonConf := buildConfig(port, &rc)
 	hash := md5.Sum([]byte(jsonConf))
 	hashString := hex.EncodeToString(hash[:])
+	HashProtocolMap.Store(hashString, rc.protocol)
 	createConfigFile(hashString, jsonConf)
 	return
 }
@@ -73,7 +75,24 @@ func parseVless(link *url.URL, rc *rawConfig) {
 	port, _ := strconv.Atoi(strings.Split(link.Host, ":")[1])
 	rc.port = uint16(port)
 	rc.protocol = link.Scheme
-
+	if serviceName, ok := query["serviceName"]; ok {
+		rc.serviceName = serviceName[0]
+	}
+	if spiderX, ok := query["spx"]; ok {
+		rc.spiderX = spiderX[0]
+	}
+	if shortId, ok := query["sid"]; ok {
+		rc.shortId = shortId[0]
+	}
+	if publicKey, ok := query["pbk"]; ok {
+		rc.publicKey = publicKey[0]
+	}
+	if serverName, ok := query["sni"]; ok {
+		rc.serverName = serverName[0]
+	}
+	if fingerprint, ok := query["fp"]; ok {
+		rc.fingerprint = fingerprint[0]
+	}
 }
 
 func parseVmess(link *url.URL, rc *rawConfig) {
@@ -190,7 +209,7 @@ func buildOutbounds(rc *rawConfig) *[]Outbound {
 }
 
 func buildStreamSettings(rc *rawConfig) *StreamSettingsObject {
-	ss := &StreamSettingsObject{Network: rc.net}
+	ss := &StreamSettingsObject{Network: rc.net, Security: rc.security}
 	switch rc.net {
 	case "ws":
 		ss.WsSettings = &wsSettings{
@@ -202,7 +221,18 @@ func buildStreamSettings(rc *rawConfig) *StreamSettingsObject {
 			},
 		}
 		getSecurity(rc, ss)
+	case "grpc":
+		ss.GrpcSettings = &grpcSettings{}
+		ss.RealitySettings = &REALITYSETTINGS{
+			Fingerprint: rc.fingerprint,
+			PublicKey:   rc.publicKey,
+			ServerName:  rc.serverName,
+			ShortId:     rc.shortId,
+			SpiderX:     rc.spiderX,
+		}
+	case "":
 	default:
+		log.Println(rc.net)
 		return nil
 	}
 	return ss

@@ -9,6 +9,7 @@ import (
 
 var PortPidMap sync.Map
 var PortConfMap sync.Map
+var HashProtocolMap sync.Map
 
 var Package sync.Map
 

@@ -81,7 +81,7 @@ func GetConfigs() {
 		if value.(infoPackageRow).Use {
 			if value.(infoPackageRow).Id == 2 {
 				wg.Add(1)
-				go GenerateConfig("vless://781a8eb4-c4f7-4f99-9dee-e80369dbf1ec@104.18.19.153:80?security=none&type=ws&host=us3.rtacg.com&path=/", &wg)
+				go GenerateConfig("vless://4a60a8e0-b51d-41ae-8500-1b0b6724c6e6@185.247.184.147:2060?mode=gun&security=reality&encryption=none&alpn=h2,http/1.1&authority=&pbk=1k5jM49Bx5DEAfS5Vpqz93t2XOXk-kwXl0V5Q9jn_WY&fp=chrome&spx=/@ELiV2RAY--@ELiV2RAY--@ELiV2RAY--@ELiV2RAY--@ELiV2RAY--@ELiV2RAY--@ELiV2RAY--@ELiV2RAY&type=grpc&serviceName=&sni=dash.cloudflare.com&sid=f77e5398", &wg)
 			}
 			response := httpGET(value.(infoPackageRow).Url, 1)
 			for _, link := range strings.Split(response, "\n") {
@@ -117,7 +117,8 @@ func runXray() {
 	_ = stdin.Close()
 	_, err = cmd.CombinedOutput()
 	pid := cmd.Process.Pid
-	log.Println("PID: ", pid, "	PORT: ", port, "	STATUS: Started")
+	protocol, _ := HashProtocolMap.Load(hash)
+	log.Println("Protocol: ", protocol, "	PID: ", pid, "	PORT: ", port, "	STATUS: Started")
 	PortPidMap.Store(port, pid)
 }
 
@@ -129,14 +130,17 @@ func killer() {
 		if !ok2 {
 			continue
 		}
+		hash, _ := PortConfMap.Load(i)
+		protocol, _ := HashProtocolMap.Load(hash)
 		if !ok {
 			process, _ := os.FindProcess(pid.(int))
 			_ = process.Signal(os.Interrupt)
 			_, _ = process.Wait()
-			log.Println("PID: ", pid, "	PORT: ", i, "	STATUS: Killed")
+
+			log.Println("Protocol: ", protocol, "	PID: ", pid, "	PORT: ", i, "	STATUS: Killed")
 			deletePortInfo(i)
 		} else {
-			log.Println("PID: ", pid, "	PORT: ", i, "	STATUS: Live")
+			log.Println("Protocol: ", protocol, "	PID: ", pid, "	PORT: ", i, "	STATUS: Live")
 		}
 	}
 }
