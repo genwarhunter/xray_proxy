@@ -308,8 +308,3 @@ type rawConfig struct {
 	method      string
 	password    string
 }
-
-type SECURYTY struct {
-	t               string
-	securitySetting interface{}
-}
