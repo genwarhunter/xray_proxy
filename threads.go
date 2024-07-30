@@ -81,7 +81,7 @@ func GetConfigs() {
 		if value.(infoPackageRow).Use {
 			if value.(infoPackageRow).Id == 2 {
 				wg.Add(1)
-				go GenerateConfig("trojan://telegram-id-privatevpns@63.34.118.223:22222?security=tls&alpn=http/1.1&headerType=none&type=tcp&sni=trojan.burgerip.co.uk", &wg)
+				go GenerateConfig("ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpGNGZDaFdHb2pJY214dU1ST3VWUUlRS0dLUmRnMDl2S2ZHcDJTVHpTcmR6clVTd1o=@45.87.219.110:51348#🔒 SS-TCP-NA 🇧🇾 BY-45.87.219.110:51348", &wg)
 			}
 			response := httpGET(value.(infoPackageRow).Url, 1)
 			for _, link := range strings.Split(response, "\n") {
@@ -132,7 +132,7 @@ func killer() {
 		}
 		if !ok {
 			process, _ := os.FindProcess(pid.(int))
-			_ = process.Signal(os.Interrupt)
+			_ = process.Signal(os.Kill)
 			_, _ = process.Wait()
 			log.Println("PID: ", pid, "	PORT: ", i, "	STATUS: Killed")
 			deletePortInfo(i)

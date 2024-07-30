@@ -305,6 +305,8 @@ type rawConfig struct {
 	spiderX     string
 	flow        string
 	alpn        string
+	method      string
+	password    string
 }
 
 type SECURYTY struct {

@@ -70,7 +70,9 @@ func parseVless(link *url.URL, rc *rawConfig) {
 		rc.Type = Type[0]
 		rc.net = Type[0]
 	}
-	port, _ := strconv.Atoi(strings.Split(link.Host, ":")[1])
+	rc.ip = link.Hostname()
+	rc.host = link.Hostname()
+	port, _ := strconv.Atoi(link.Port())
 	rc.port = uint16(port)
 	rc.protocol = link.Scheme
 	if serviceName, ok := query["serviceName"]; ok {
@@ -135,15 +137,15 @@ func parseTrojan(link *url.URL, rc *rawConfig) {
 	if tls, ok := query["security"]; ok {
 		rc.tls = tls[0]
 	}
-	rc.ip = strings.Split(link.Host, ":")[0]
-	if host, ok := query["host"]; ok {
-		rc.host = host[0]
-	}
+
+	rc.ip = link.Hostname()
+	rc.host = link.Hostname()
+
 	if Type, ok := query["type"]; ok {
 		rc.Type = Type[0]
 		rc.net = Type[0]
 	}
-	port, _ := strconv.Atoi(strings.Split(link.Host, ":")[1])
+	port, _ := strconv.Atoi(link.Port())
 	rc.port = uint16(port)
 	rc.protocol = link.Scheme
 	if serviceName, ok := query["serviceName"]; ok {
@@ -173,7 +175,14 @@ func parseTrojan(link *url.URL, rc *rawConfig) {
 }
 
 func parseSS(link *url.URL, rc *rawConfig) {
-	// Implementation here
+	rc.ip = link.Hostname()
+	port, _ := strconv.Atoi(link.Port())
+	rc.protocol = "shadowsocks"
+	rc.port = uint16(port)
+	decoded, _ := base64.StdEncoding.DecodeString(link.User.Username())
+	strsplit := strings.Split(string(decoded), ":")
+	rc.method = strsplit[0]
+	rc.password = strsplit[1]
 }
 
 func parseSSR(link *url.URL, rc *rawConfig) {
@@ -231,7 +240,16 @@ func buildConfig(rc *rawConfig) string {
 func buildOutbounds(rc *rawConfig) *[]Outbound {
 	var VNex vnext
 	var Serv Server
-	if rc.protocol != "trojan" {
+	if rc.protocol == "trojan" {
+		Serv.Address = rc.ip
+		Serv.Port = rc.port
+		Serv.Password = rc.id
+	} else if rc.protocol == "shadowsocks" {
+		Serv.Password = rc.password
+		Serv.Address = rc.ip
+		Serv.Method = rc.method
+		Serv.Port = rc.port
+	} else {
 		VNex = vnext{
 			Address: rc.ip,
 			Port:    getPort(rc.port),
@@ -239,10 +257,6 @@ func buildOutbounds(rc *rawConfig) *[]Outbound {
 				{Id: rc.id, AlterId: 0, Security: "auto", Encryption: rc.enc, Flow: rc.flow},
 			},
 		}
-	} else {
-		Serv.Address = rc.ip
-		Serv.Port = rc.port
-		Serv.Password = rc.id
 	}
 	outbounds := []Outbound{
 		{
